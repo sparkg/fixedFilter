@@ -12,8 +12,8 @@ def conv2d(x,w):
 def max_pool_2x2(x):
     return tf.nn.max_pool(x,ksize=[1,2,2,1],strides=[1,2,2,1],padding='SAME')
 #设置占位符，尺寸为样本输入和输出的尺寸
-x=tf.placeholder(tf.float32,[None,784])
-y_=tf.placeholder(tf.float32,[None,10])
+x=tf.placeholder(tf.float32,[None,784], name='image')
+y_=tf.placeholder(tf.float32,[None,10], name='label')
 x_img=tf.reshape(x,[-1,28,28,1])
 
 
@@ -32,39 +32,47 @@ temp = np.array(temp)
 temp = np.reshape(temp, [3,3,1,26])
 #=====================================================
 #设置第一个卷积层和池化层
-w_conv1=(1/255.0) * tf.constant(temp, dtype=tf.float32)
-b_conv1=tf.constant(0.1,shape=[26])
-h_conv1=tf.nn.relu(conv2d(x_img,w_conv1)+b_conv1)
-h_pool1=max_pool_2x2(h_conv1)
+with tf.variable_scope("Conv"):
+    w_conv1=(1/255.0) * tf.constant(temp, dtype=tf.float32)
+    b_conv1=tf.constant(0.1,shape=[26])
+    h_conv1=tf.nn.relu(conv2d(x_img,w_conv1)+b_conv1)
+with tf.variable_scope("MaxPooling"):
+    h_pool1=max_pool_2x2(h_conv1)
 
 
 #设置第一个全连接层
-w_fc1=tf.Variable(tf.truncated_normal([14*14*26,1024],stddev=0.1))
-b_fc1=tf.Variable(tf.constant(0.1,shape=[1024]))
-h_pool2_flat=tf.reshape(h_pool1,[-1,14*14*26])
-h_fc1=tf.nn.relu(tf.matmul(h_pool2_flat,w_fc1)+b_fc1)
+with tf.variable_scope("FullConnection_1"):
+    w_fc1=tf.Variable(tf.truncated_normal([14*14*26,1024],stddev=0.1))
+    b_fc1=tf.Variable(tf.constant(0.1,shape=[1024]))
+    h_pool2_flat=tf.reshape(h_pool1,[-1,14*14*26])
+    h_fc1=tf.nn.relu(tf.matmul(h_pool2_flat,w_fc1)+b_fc1)
 
 #dropout（随机权重失活）
-keep_prob=tf.placeholder(tf.float32)
-h_fc1_drop=tf.nn.dropout(h_fc1,keep_prob)
+with tf.variable_scope("DropOut"):
+    keep_prob=tf.placeholder(tf.float32)
+    h_fc1_drop=tf.nn.dropout(h_fc1,keep_prob)
 
 #设置第二个全连接层
-w_fc2=tf.Variable(tf.truncated_normal([1024,10],stddev=0.1))
-b_fc2=tf.Variable(tf.constant(0.1,shape=[10]))
-y_out=tf.nn.softmax(tf.matmul(h_fc1_drop,w_fc2)+b_fc2)
+with tf.variable_scope("FullConnection_2"):
+    w_fc2=tf.Variable(tf.truncated_normal([1024,10],stddev=0.1))
+    b_fc2=tf.Variable(tf.constant(0.1,shape=[10]))
+    y_out=tf.nn.softmax(tf.matmul(h_fc1_drop,w_fc2)+b_fc2)
 
 #建立loss function，为交叉熵
-loss=tf.reduce_mean(-tf.reduce_sum(y_*tf.log(y_out),reduction_indices=[1]))
+with tf.variable_scope("loss"):
+    loss=tf.reduce_mean(-tf.reduce_sum(y_*tf.log(y_out),reduction_indices=[1]))
 #配置Adam优化器，学习速率为1e-4
 train_step=tf.train.AdamOptimizer(1e-4).minimize(loss)
 
 #建立正确率计算表达式
-correct_prediction=tf.equal(tf.argmax(y_out,1),tf.argmax(y_,1))
-accuracy=tf.reduce_mean(tf.cast(correct_prediction,tf.float32))
+with tf.variable_scope("accuracy"):
+    correct_prediction=tf.equal(tf.argmax(y_out,1),tf.argmax(y_,1))
+    accuracy=tf.reduce_mean(tf.cast(correct_prediction,tf.float32))
 
 #开始喂数据，训练
 tf.global_variables_initializer().run()
-
+writer = tf.summary.FileWriter(r'D:/tensorboard/', sess.graph)
+writer.close()
 #写入文件
 f = open(r'D:/fixed_5.txt','w')
 for i in range(100000):
