@@ -64,12 +64,17 @@ accuracy=tf.reduce_mean(tf.cast(correct_prediction,tf.float32))
 
 #开始喂数据，训练
 tf.global_variables_initializer().run()
-for i in range(50000):
+
+#写入文件
+f = open(r'D:/fixed_5.txt','w')
+for i in range(100000):
     batch=mnist.train.next_batch(50)
     if i%100==0:
         train_accuracy=accuracy.eval(feed_dict={x:batch[0],y_:batch[1],keep_prob:1})
         print("step %d,train_accuracy= %g"%(i,train_accuracy))
+        f.writelines("step %d,train_accuracy= %g\n"%(i,train_accuracy))
     train_step.run(feed_dict={x:batch[0],y_:batch[1],keep_prob:0.5})
 
 #训练之后，使用测试集进行测试，输出最终结果
 print("test_accuracy= %g"%accuracy.eval(feed_dict={x:mnist.test.images,y_:mnist.test.labels,keep_prob:1}))
+f.close()
